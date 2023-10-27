@@ -259,10 +259,11 @@ namespace JUnit.TestLogger
             element.SetAttributeValue("time", totalTime.TotalSeconds.ToString("N3", CultureInfo.InvariantCulture));
             element.SetAttributeValue("tests", allSuites.Sum(suites => suites.tests));
             element.SetAttributeValue("failures", allSuites.Sum(suites => suites.failures));
+            element.SetAttributeValue("skipped", allSuites.Sum(suites => suites.skipped));
             return element;
         }
 
-        private (XElement element, int tests, int failures, TimeSpan time) CreateTestSuiteElement(IGrouping<string, TestResultInfo> resultsByAssembly, int index)
+        private (XElement element, int tests, int failures, int skipped, TimeSpan time) CreateTestSuiteElement(IGrouping<string, TestResultInfo> resultsByAssembly, int index)
         {
             List<TestResultInfo> testResultAsError = new List<TestResultInfo>();
             var assemblyPath = resultsByAssembly.Key;
@@ -275,6 +276,7 @@ namespace JUnit.TestLogger
 
             int total = 0;
             int failed = 0;
+            int skipped = 0;
             var time = TimeSpan.Zero;
 
             var element = new XElement("testsuite");
@@ -284,6 +286,7 @@ namespace JUnit.TestLogger
             {
                 total += collection.total;
                 failed += collection.failed;
+                skipped += collection.skipped;
                 time += collection.time;
 
                 allCases.AddRange(collection.elements);
@@ -298,9 +301,10 @@ namespace JUnit.TestLogger
 
             element.SetAttributeValue("tests", total);
             element.SetAttributeValue("failures", failed);
+            element.SetAttributeValue("skipped", skipped);
             element.SetAttributeValue("time", time.TotalSeconds.ToString("N3", CultureInfo.InvariantCulture));
 
-            return (element, total, failed, time);
+            return (element, total, failed, skipped, time);
         }
 
         private static (List<XElement> elements, int total, int passed, int failed, int skipped, int error, TimeSpan time) CreateTestCases(
@@ -382,6 +386,12 @@ namespace JUnit.TestLogger
                 failure.Value = RemoveInvalidXmlChar(result.ErrorStackTrace);
 
                 element.Add(failure);
+            }
+
+            if (result.Outcome == TestOutcome.Skipped)
+            {
+                var skipped = new XElement("skipped");
+                element.Add(skipped);
             }
 
             return element;
